@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #player-turn {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-gap: 5px;
+            margin-top: 20px;
+        }
+
+        .cell {
+            width: 100px;
+            height: 100px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #ddd;
+        }
+
+        .cell:hover {
+            background-color: #ccc;
+        }
+
+        #reset-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        #reset-btn:hover {
+            background-color: #45a049;
+        }
+
+        #modal-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+
+        #modal {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        #result-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1;
+        }
+
+        #result-box {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+    </style>
+    <title>Tic Tac Toe</title>
+</head>
+<body>
+    <div id="modal-container">
+        <div id="modal">
+            <h2>Choose Game Mode</h2>
+            <button onclick="startGame('person')">Person-to-Person</button>
+            <button onclick="startGame('computer')">Person-vs-Computer</button>
+        </div>
+    </div>
+
+    <div id="game-container" style="display: none;">
+        <h1>Tic Tac Toe</h1>
+        <div id="player-turn">Player X's turn</div>
+        <div id="board"></div>
+        <button id="reset-btn" onclick="resetGame()">Reset Game</button>
+    </div>
+
+    <div id="result-modal">
+        <div id="result-box">
+            <h2 id="result-message"></h2>
+            <button onclick="resetGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const playerTurn = document.getElementById('player-turn');
+        const board = document.getElementById('board');
+        const resetBtn = document.getElementById('reset-btn');
+        const resultModal = document.getElementById('result-modal');
+        const resultMessage = document.getElementById('result-message');
+        let currentPlayer = 'X';
+        let boardState = ['', '', '', '', '', '', '', '', ''];
+        let gameActive = false;
+        let gameMode = '';
+
+        function showGameModeModal() {
+            const modalContainer = document.getElementById('modal-container');
+            modalContainer.style.display = 'flex';
+        }
+
+        function startGame(mode) {
+            const modalContainer = document.getElementById('modal-container');
+            modalContainer.style.display = 'none';
+
+            gameMode = mode;
+            gameContainer.style.display = 'flex';
+
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.setAttribute('data-index', i);
+                cell.addEventListener('click', handleCellClick);
+                board.appendChild(cell);
+            }
+
+            gameActive = true;
+            playerTurn.textContent = `Player X's turn`;
+
+            if (mode === 'computer') {
+                makeComputerMove();
+            }
+        }
+
+        function handleCellClick(event) {
+            const index = event.target.getAttribute('data-index');
+
+            if (boardState[index] === '' && gameActive) {
+                boardState[index] = currentPlayer;
+                event.target.textContent = currentPlayer;
+                event.target.style.backgroundColor = currentPlayer === 'X' ? '#6fa4e5' : '#f4a742';
+
+                if (checkWinner()) {
+                    endGame(`Player ${currentPlayer} wins!`);
+                } else if (boardState.every(cell => cell !== '')) {
+                    endGame('It\'s a draw!');
+                } else {
+                    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                    playerTurn.textContent = `Player ${currentPlayer}'s turn`;
+
+                    if (gameMode === 'computer' && currentPlayer === 'O' && gameActive) {
+                        setTimeout(makeComputerMove, 1000); // 1-second delay
+                    }
+                }
+            }
+        }
+
+        function checkWinner() {
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+
+            for (const pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                if (boardState[a] !== '' && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function endGame(result) {
+            gameActive = false;
+            resultMessage.textContent = result;
+            resultModal.style.display = 'flex';
+        }
+
+        function resetGame() {
+            resultModal.style.display = 'none';
+            currentPlayer = 'X';
+            boardState = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            playerTurn.textContent = 'Player X\'s turn';
+
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.style.backgroundColor = '#ddd';
+            });
+
+            if (gameMode === 'computer' && currentPlayer === 'O' && gameActive) {
+                makeComputerMove();
+            }
+        }
+
+        function makeComputerMove() {
+            const emptyCells = boardState.reduce((acc, cell, index) => {
+                if (cell === '') {
+                    acc.push(index);
+                }
+                return acc;
+            }, []);
+
+            if (emptyCells.length > 0 && gameActive) {
+                const randomIndex = Math.floor(Math.random() * emptyCells.length);
+                const computerMove = emptyCells[randomIndex];
+                boardState[computerMove] = 'O';
+
+                const computerCell = document.querySelector(`.cell[data-index="${computerMove}"]`);
+                computerCell.textContent = 'O';
+                computerCell.style.backgroundColor = '#f4a742';
+
+                if (checkWinner()) {
+                    endGame('Computer wins!');
+                } else if (boardState.every(cell => cell !== '')) {
+                    endGame('It\'s a draw!');
+                } else {
+                    currentPlayer = 'X';
+                    playerTurn.textContent = 'Player X\'s turn';
+                }
+            }
+        }
+
+        showGameModeModal();
+    </script>
+</body>
+</html> 
